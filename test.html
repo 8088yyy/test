@@ -1,1 +1,328 @@
-x
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CamGirlFinder API</title>
+    <style>
+        :root {
+            --primary-color: #ff6b35;
+            --secondary-color: #222222;
+            --background-color: #1a1a1a;
+            --text-color: #f4f4f4;
+            --card-background: #2c2c2c;
+            --input-background: #3a3a3a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: var(--secondary-color);
+            color: var(--primary-color);
+            text-align: center;
+            padding: 15px 0;
+            margin-bottom: 20px;
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        header h1 {
+            font-weight: bold;
+        }
+
+        .section {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .section h2 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 107, 53, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--input-background);
+            color: var(--text-color);
+            border: 1px solid var(--secondary-color);
+            border-radius: 4px;
+            margin-bottom: 10px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #ff8a5b;
+            transform: translateY(-2px);
+        }
+
+        .results, .details, .similar {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background-color: var(--secondary-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid var(--input-background);
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(255, 107, 53, 0.3);
+        }
+
+        .card img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            filter: grayscale(20%);
+            transition: filter 0.3s ease;
+        }
+
+        .card:hover img {
+            filter: grayscale(0%);
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        .card-body h3 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .card-body p {
+            color: #cccccc;
+            margin-bottom: 5px;
+        }
+
+        .error {
+            color: var(--primary-color);
+            text-align: center;
+            padding: 15px;
+            background-color: rgba(255, 107, 53, 0.1);
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .results, .details, .similar {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>CamGirlFinder API</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Search Models -->
+        <div class="section">
+            <h2>Search Models</h2>
+            <div class="form-group">
+                <input id="searchModel" type="text" placeholder="Enter model name (3-50 characters)" required>
+                <select id="searchPlatform">
+                    <option value="">All Platforms</option>
+                    <option value="mfc">MyFreeCams</option>
+                    <option value="cb">Chaturbate</option>
+                    <option value="cs">CamSoda</option>
+                    <option value="lj">LiveJasmin</option>
+                    <option value="stv">ShowUpTV</option>
+                </select>
+                <button onclick="searchModels()">Search Models</button>
+            </div>
+            <div id="searchResults" class="results"></div>
+        </div>
+
+        <!-- Random Model -->
+        <div class="section">
+            <h2>Get Random Model</h2>
+            <button onclick="getRandomModel()">Fetch Random Model</button>
+            <div id="randomModel" class="results"></div>
+        </div>
+
+        <!-- Model Details -->
+        <div class="section">
+            <h2>Get Model Details</h2>
+            <div class="form-group">
+                <input id="modelPlatform" type="text" placeholder="Enter platform (e.g., 'mfc')" required>
+                <input id="modelName" type="text" placeholder="Enter model name" required>
+                <button onclick="getModelDetails()">Get Details</button>
+            </div>
+            <div id="modelDetails" class="details"></div>
+        </div>
+
+        <!-- Similar Models -->
+        <div class="section">
+            <h2>Get Similar Models</h2>
+            <div class="form-group">
+                <input id="similarPlatform" type="text" placeholder="Enter platform (e.g., 'mfc')" required>
+                <input id="similarModel" type="text" placeholder="Enter model name" required>
+                <button onclick="getSimilarModels()">Get Similar Models</button>
+            </div>
+            <div id="similarModels" class="similar"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://api.camgirlfinder.net';
+
+        // Search Models
+        async function searchModels() {
+            const model = document.getElementById('searchModel').value.trim();
+            const platform = document.getElementById('searchPlatform').value;
+            if (model.length < 3 || model.length > 50) {
+                alert('Model name must be between 3 and 50 characters.');
+                return;
+            }
+            const url = `${API_BASE}/models/search?model=${encodeURIComponent(model)}${platform ? `&platform=${platform}` : ''}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                renderResults('searchResults', data);
+            } catch (error) {
+                showError('searchResults', error.message);
+            }
+        }
+
+        // Get Random Model
+        async function getRandomModel() {
+            try {
+                const response = await fetch(`${API_BASE}/models/random`);
+                const data = await response.json();
+                renderResults('randomModel', [data]);
+            } catch (error) {
+                showError('randomModel', error.message);
+            }
+        }
+
+        // Get Model Details
+        async function getModelDetails() {
+            const platform = document.getElementById('modelPlatform').value.trim();
+            const model = document.getElementById('modelName').value.trim();
+            if (!platform || !model) {
+                alert('Both platform and model name are required.');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/models/${platform}/${model}`);
+                const data = await response.json();
+                renderDetails('modelDetails', data);
+            } catch (error) {
+                showError('modelDetails', error.message);
+            }
+        }
+
+        // Get Similar Models
+        async function getSimilarModels() {
+            const platform = document.getElementById('similarPlatform').value.trim();
+            const model = document.getElementById('similarModel').value.trim();
+            if (!platform || !model) {
+                alert('Both platform and model name are required.');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/models/${platform}/${model}/similar`);
+                const data = await response.json();
+                const flattened = Object.values(data).flat();
+                renderResults('similarModels', flattened);
+            } catch (error) {
+                showError('similarModels', error.message);
+            }
+        }
+
+        // Render Results
+        function renderResults(containerId, data) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = data.map(item => `
+                <div class="card">
+                    <img src="${item.persons?.[0]?.urls?.faceImage || 'https://via.placeholder.com/250'}" alt="${item.name}">
+                    <div class="card-body">
+                        <h3>${item.name}</h3>
+                        <p>Platform: ${item.platform}</p>
+                        <p>Gender: ${item.gender}</p>
+                        <p>Last Seen: ${new Date(item.seen).toLocaleString()}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render Details
+        function renderDetails(containerId, data) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `
+                <div class="card">
+                    <img src="${data.persons?.[0]?.urls?.fullImage || 'https://via.placeholder.com/250'}" alt="${data.name}">
+                    <div class="card-body">
+                        <h3>${data.name}</h3>
+                        <p>Platform: ${data.platform}</p>
+                        <p>Gender: ${data.gender}</p>
+                        <p>Last Seen: ${new Date(data.seen).toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show Error
+        function showError(containerId, message) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `<div class="error">Error: ${message}</div>`;
+        }
+    </script>
+</body>
+</html>
