@@ -1,1 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Player</title>
+    <meta content="noindex, nofollow, noarchive" name="robots"/>
+    <meta name="referrer" content="no-referrer" />
+    <script src="https://cdn.jwplayer.com/libraries/6XDaOYwz.js"></script>
+    <style>
+       html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        #player-container {
+            width: 100%;
+            height: 100vh;
+        }
+        #player {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="player" class="ViostreamIframe"></div>
 
+    <script>
+        function getParameterByName(name) {
+            name = name.replace(/[\[\]]/g, "\\$&");
+            var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+                results = regex.exec(window.location.href);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, " "));
+        }
+
+        var ConfiguracionCanales = {
+            
+            "1": {
+                url: "https://companion-live-play1.streamready.in/live/media13/sony_ten_4/ndashd/sony_ten_4.mpd",
+                k1: "9daff0561ac43417ad3e75b89b08ee34",
+                k2: "c2c5a0291dbc525b5274a6c7d3ca9a18"
+            },
+            "2": {
+                url: "https://companion-live-play1.streamready.in/live/media4/sony_sports_ten_5/ndashd/sony_sports_ten_5.mpd",
+                k1: "aa0cc480a31637bca87bced5a3ce3c75",
+                k2: "fe20e478d71d67c248c67837b4692118"
+            }
+        };
+
+var id = getParameterByName('id');
+        var config = ConfiguracionCanales[id];
+
+        if (config) {
+            var sources = [];
+
+            if (config.url.includes('.m3u8')) {
+                sources.push({
+                    file: config.url
+                });
+            }
+
+            if (config.url.includes('.mpd') && config.k1 && config.k2) {
+                sources.push({
+                    file: config.url,
+                    drm: {
+                        clearkey: {
+                            keyId: config.k1,
+                            key: config.k2
+                        }
+                    }
+                });
+            }
+
+            jwplayer("player").setup({
+                playlist: [{
+                    sources: sources
+                }],
+                width: "100%",
+                height: "100%",
+                aspectratio: "16:9", // Maintains aspect ratio
+                autostart: true,
+                primary: "html5",
+                stretching: "exactfit", // Ensures player fills container
+                streaming: {
+                    abr: {
+                        enabled: true // Adaptive bitrate streaming enabled
+                    }
+                }
+            });
+
+            // Optional: Error handling
+            jwplayer().on('error', function(error) {
+                console.error("Player Error:", error);
+            });
+        } else {
+            console.error("Invalid or missing channel ID");
+        }
+    </script>
+</body>
+</html>
