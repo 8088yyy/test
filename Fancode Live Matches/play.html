@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fancode Live Matches</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #jwplayerDiv {
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        #error-message {
+            display: none;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        @media screen and (max-width: 768px) {
+            .container {
+                width: 100vw;
+                height: 100vh;
+            }
+        }
+    </style>
+    <script src="https://content.jwplatform.com/libraries/SAHhwvZq.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div id="jwplayerDiv"></div>
+        <div id="error-message">
+            <h1>Stream URL is missing!</h1>
+            <p>Please return to the previous page and select a valid stream.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                // Fetch URL parameters
+                const params = new URLSearchParams(window.location.search);
+                const streamUrl = params.get('url'); // Fetch the 'url' query parameter
+                
+                // Validate and initialize the player
+                if (streamUrl && streamUrl.trim() !== '') {
+                    const player = jwplayer("jwplayerDiv").setup({
+                        file: streamUrl,
+                        autostart: true,
+                        stretching: "uniform",
+                        width: "100%",
+                        height: "100%",
+                        type: "hls",
+                        fullscreen: true,
+                        controls: true
+                    });
+
+                    // Add fullscreen handling
+                    player.on('fullscreen', function(event) {
+                        if (event.fullscreen) {
+                            document.documentElement.style.overflow = 'hidden';
+                        } else {
+                            document.documentElement.style.overflow = 'auto';
+                        }
+                    });
+                } else {
+                    throw new Error('Stream URL is missing!');
+                }
+            } catch (error) {
+                console.error(error.message);
+                // Show error message if URL is not found
+                document.getElementById('jwplayerDiv').style.display = 'none';
+                const errorMsg = document.getElementById('error-message');
+                errorMsg.style.display = 'block';
+                errorMsg.innerHTML = `
+                    <h1>${error.message}</h1>
+                    <p>Please return to the previous page and select a valid stream.</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

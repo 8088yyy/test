@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fancode Live Matches</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-medium: #1E1E1E;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B0B0B0;
+            --accent-live: #FF4136;
+            --accent-upcoming: #4CAF50;
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px; /* Increased max-width */
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--text-primary);
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .telegram-btn {
+            background-color: #0088cc;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color var(--transition-speed);
+        }
+
+        .telegram-btn:hover {
+            background-color: #006699;
+        }
+
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Increased grid item width */
+            gap: 25px; /* Slightly increased gap */
+        }
+
+        .match-card {
+            background-color: var(--bg-medium);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .match-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .match-image-container {
+            position: relative;
+            width: 100%;
+            height: 250px; /* Increased image height */
+        }
+
+        .match-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .match-category {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            background-color: rgba(0,0,0,0.7);
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+
+        .match-details {
+            padding: 15px;
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .match-details h3 {
+            font-size: 1.1rem; /* Slightly larger font */
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .match-details p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .match-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+
+        .status-LIVE {
+            background-color: var(--accent-live);
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-UPCOMING {
+            background-color: var(--accent-upcoming);
+            color: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @media (max-width: 768px) {
+            .matches-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Fancode Live Matches</h1>
+            <a href="#" class="telegram-btn">Join Telegram</a>
+        </div>
+        <div id="matches" class="matches-grid"></div>
+    </div>
+
+    <script>
+        const apiURL = 'https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json';
+
+        fetch(apiURL)
+            .then(response => response.json())
+            .then(data => {
+                // Sort matches so that LIVE matches come first
+                data.matches.sort((a, b) => {
+                    if (a.status === 'LIVE' && b.status !== 'LIVE') return -1;
+                    if (a.status !== 'LIVE' && b.status === 'LIVE') return 1;
+                    return 0;
+                });
+
+                const matchesContainer = document.getElementById('matches');
+                data.matches.forEach(match => {
+                    const matchCard = document.createElement('div');
+                    matchCard.className = 'match-card';
+
+                    const statusText = match.status === 'LIVE' ? 'LIVE' : 'UPCOMING';
+                    const statusClass = match.status === 'LIVE' ? 'status-LIVE' : 'status-UPCOMING';
+
+                    matchCard.innerHTML = `
+                        <div class="match-image-container">
+                            <div class="match-category">${match.event_category || 'Sport'}</div>
+                            <div class="match-status ${statusClass}">${statusText}</div>
+                            <img src="${match.src}" alt="${match.event_name}">
+                        </div>
+                        <div class="match-details">
+                            <h3>${match.event_name}</h3>
+                            <p>${match.match_name}</p>
+                            <p>${match.status === 'LIVE' ? match.startTime : (match.status === 'UPCOMING' ? match.startTime : '')}</p>
+                        </div>
+                    `;
+
+                    // Add click event for LIVE and UPCOMING matches
+                    if (match.status === 'LIVE' && match.adfree_url) {
+                        matchCard.addEventListener('click', () => {
+                            window.location.href = `play.html?url=${match.adfree_url}`;
+                        });
+                    } else if (match.status === 'UPCOMING') {
+                        matchCard.addEventListener('click', () => {
+                            alert('This match is UPCOMING.');
+                        });
+                    }
+
+                    matchesContainer.appendChild(matchCard);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+    </script>
+</body>
+</html>
