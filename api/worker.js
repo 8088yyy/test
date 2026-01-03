@@ -1,180 +1,164 @@
-// Stalker-Portal To M3U Generator Script
-// Created by: @tg_aadi
-// Modified for Vercel Edge Runtime
+// ✅ REQUIRED BY VERCEL (NEW EDGE SYNTAX)
+export const config = {
+  runtime: "edge"
+};
 
-// ============ ⚙ CONFIGURATION ============
-const config = {
-    host: "tv.stream4k.cc",          // example.com (NO http/https)
-    mac_address: "00:1A:79:00:44:91",
-    serial_number: "9519BD4B1036B",
-    device_id: "B7D9BFFDB1BB3757EB3E6A6D20437EC812DD5BF518BF622FD51998F464AFA027",
-    device_id_2: "B7D9BFFDB1BB3757EB3E6A6D20437EC812DD5BF518BF622FD51998F464AFA027",
-    stb_type: "MAG250",
-    api_signature: "263"
+// ======================================================================
+// Stalker-Portal → M3U Generator
+// Original Author: @tg_aadi
+// Fixed & Adapted for Vercel Edge Functions (2025)
+// ======================================================================
+
+// ============ ⚙ CONFIG ============
+const PORTAL = {
+  host: "YOUR_PORTAL_DOMAIN",     // example.com (NO http/https)
+  mac: "00:1A:79:XX:XX:XX",
+  sn: "XXXXXXXX",
+  device_id: "XXXXXXXX",
+  device_id2: "XXXXXXXX",
+  stb: "MAG250",
+  api_sig: "263"
 };
 
 // ================== UTILS ==================
-async function hash(str) {
-    const data = new TextEncoder().encode(str);
-    const digest = await crypto.subtle.digest("MD5", data);
-    return [...new Uint8Array(digest)]
-        .map(b => b.toString(16).padStart(2, "0"))
-        .join("");
+async function md5(str) {
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest("MD5", buf);
+  return [...new Uint8Array(hash)]
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
-async function generateHardwareVersions() {
-    config.hw_version =
-        "1.7-BD-" + (await hash(config.mac_address)).slice(0, 2).toUpperCase();
-    config.hw_version_2 = await hash(
-        config.serial_number.toLowerCase() +
-        config.mac_address.toLowerCase()
-    );
+async function prepareHW() {
+  PORTAL.hw1 = "1.7-BD-" + (await md5(PORTAL.mac)).slice(0, 2).toUpperCase();
+  PORTAL.hw2 = await md5(PORTAL.sn.toLowerCase() + PORTAL.mac.toLowerCase());
 }
 
-function logDebug(msg) {
-    console.log(`[${new Date().toISOString()}] ${msg}`);
-}
-
-function getHeaders(token = "") {
-    const h = {
-        "Cookie": `mac=${config.mac_address}; stb_lang=en; timezone=GMT`,
-        "Referer": `http://${config.host}/stalker_portal/c/`,
-        "User-Agent":
-            "Mozilla/5.0 (QtEmbedded; Linux; MAG200) stbapp ver: 2 rev: 250",
-        "X-User-Agent": `Model: ${config.stb_type}; Link: WiFi`
-    };
-    if (token) h["Authorization"] = `Bearer ${token}`;
-    return h;
-}
+const headers = (token = "") => ({
+  "Cookie": `mac=${PORTAL.mac}; stb_lang=en; timezone=GMT`,
+  "Referer": `http://${PORTAL.host}/stalker_portal/c/`,
+  "User-Agent":
+    "Mozilla/5.0 (QtEmbedded; Linux; MAG200) stbapp ver: 2 rev: 250",
+  "X-User-Agent": `Model: ${PORTAL.stb}; Link: WiFi`,
+  ...(token ? { Authorization: `Bearer ${token}` } : {})
+});
 
 // ================== AUTH ==================
 async function getToken() {
-    const url = `http://${config.host}/stalker_portal/server/load.php?type=stb&action=handshake&token=&JsHttpRequest=1-xml`;
-    const r = await fetch(url, { headers: getHeaders() });
-    const t = await r.text();
-    return JSON.parse(t)?.js?.token || "";
+  const r = await fetch(
+    `http://${PORTAL.host}/stalker_portal/server/load.php?type=stb&action=handshake&JsHttpRequest=1-xml`,
+    { headers: headers() }
+  );
+  return JSON.parse(await r.text())?.js?.token || "";
 }
 
-async function auth(token) {
-    const metrics = encodeURIComponent(JSON.stringify({
-        mac: config.mac_address, type: "STB"
-    }));
+async function getProfile(token) {
+  const metrics = encodeURIComponent(JSON.stringify({ mac: PORTAL.mac }));
+  const url =
+    `http://${PORTAL.host}/stalker_portal/server/load.php?type=stb&action=get_profile` +
+    `&sn=${PORTAL.sn}&stb_type=${PORTAL.stb}` +
+    `&device_id=${PORTAL.device_id}&device_id2=${PORTAL.device_id2}` +
+    `&hw_version=${PORTAL.hw1}&hw_version_2=${PORTAL.hw2}` +
+    `&metrics=${metrics}&api_signature=${PORTAL.api_sig}&JsHttpRequest=1-xml`;
 
-    const url =
-        `http://${config.host}/stalker_portal/server/load.php?type=stb&action=get_profile` +
-        `&hd=1&sn=${config.serial_number}&stb_type=${config.stb_type}` +
-        `&device_id=${config.device_id}&device_id2=${config.device_id_2}` +
-        `&hw_version=${config.hw_version}&hw_version_2=${config.hw_version_2}` +
-        `&metrics=${metrics}&api_signature=${config.api_signature}&JsHttpRequest=1-xml`;
-
-    const r = await fetch(url, { headers: getHeaders(token) });
-    return JSON.parse(await r.text())?.js || {};
+  const r = await fetch(url, { headers: headers(token) });
+  return JSON.parse(await r.text())?.js || {};
 }
 
 async function handshake(token) {
-    const url =
-        `http://${config.host}/stalker_portal/server/load.php?type=stb&action=handshake&token=${token}&JsHttpRequest=1-xml`;
-    const r = await fetch(url, { headers: getHeaders() });
-    return JSON.parse(await r.text())?.js?.token || "";
-}
-
-async function getAccountInfo(token) {
-    const url =
-        `http://${config.host}/stalker_portal/server/load.php?type=account_info&action=get_main_info&JsHttpRequest=1-xml`;
-    const r = await fetch(url, { headers: getHeaders(token) });
-    return JSON.parse(await r.text())?.js || {};
+  const r = await fetch(
+    `http://${PORTAL.host}/stalker_portal/server/load.php?type=stb&action=handshake&token=${token}&JsHttpRequest=1-xml`,
+    { headers: headers() }
+  );
+  return JSON.parse(await r.text())?.js?.token || "";
 }
 
 // ================== IPTV ==================
 async function getGenres(token) {
-    const url =
-        `http://${config.host}/stalker_portal/server/load.php?type=itv&action=get_genres&JsHttpRequest=1-xml`;
-    const r = await fetch(url, { headers: getHeaders(token) });
-    return JSON.parse(await r.text())?.js || [];
+  const r = await fetch(
+    `http://${PORTAL.host}/stalker_portal/server/load.php?type=itv&action=get_genres&JsHttpRequest=1-xml`,
+    { headers: headers(token) }
+  );
+  return JSON.parse(await r.text())?.js || [];
 }
 
-async function getStreamURL(id, token) {
-    const url =
-        `http://${config.host}/stalker_portal/server/load.php?type=itv&action=create_link&cmd=ffrt http://localhost/ch/${id}&JsHttpRequest=1-xml`;
-    const r = await fetch(url, { headers: getHeaders(token) });
-    return JSON.parse(await r.text())?.js?.cmd || "";
+async function getStream(id, token) {
+  const r = await fetch(
+    `http://${PORTAL.host}/stalker_portal/server/load.php?type=itv&action=create_link&cmd=ffrt http://localhost/ch/${id}&JsHttpRequest=1-xml`,
+    { headers: headers(token) }
+  );
+  return JSON.parse(await r.text())?.js?.cmd || "";
 }
 
 // ================== CORE ==================
-async function genToken() {
-    await generateHardwareVersions();
-    const t1 = await getToken();
-    if (!t1) return {};
-    const profile = await auth(t1);
-    const t2 = await handshake(t1);
-    const account = await getAccountInfo(t2);
-    return { token: t2, profile, account };
+async function authAll() {
+  await prepareHW();
+  const t1 = await getToken();
+  if (!t1) return {};
+  await getProfile(t1);
+  const t2 = await handshake(t1);
+  return { token: t2 };
 }
 
-async function jsonToM3U(channels, profile, account, req) {
-    const origin = new URL(req.url).origin;
-    let out = [
-        "#EXTM3U",
-        `# Total Channels => ${channels.length}`,
-        "# Script => @tg_aadi",
-        ""
-    ];
+async function buildM3U(channels, req) {
+  const base = new URL(req.url).origin;
+  let m3u = ["#EXTM3U"];
 
-    channels.forEach(c => {
-        out.push(
-            `#EXTINF:-1 tvg-id="${c.xmltv_id || ""}" tvg-name="${c.name}" tvg-logo="${c.logo}" group-title="${c.group}",${c.name}`
-        );
-        out.push(`${origin}/${c.cmd}.m3u8`);
-    });
+  channels.forEach(c => {
+    m3u.push(
+      `#EXTINF:-1 tvg-id="${c.epg}" tvg-name="${c.name}" tvg-logo="${c.logo}" group-title="${c.group}",${c.name}`
+    );
+    m3u.push(`${base}/${c.id}.m3u8`);
+  });
 
-    return out.join("\n");
+  return m3u.join("\n");
 }
 
 // ================== HANDLER ==================
-async function handleRequest(req) {
-    const url = new URL(req.url);
-    const last = url.pathname.split("/").pop();
+async function handle(req) {
+  const url = new URL(req.url);
+  const last = url.pathname.split("/").pop();
 
-    const { token, profile, account } = await genToken();
-    if (!token) return new Response("Auth failed", { status: 500 });
+  const { token } = await authAll();
+  if (!token) return new Response("AUTH FAILED", { status: 500 });
 
-    // PLAYLIST
-    if (url.pathname.endsWith("playlist.m3u8")) {
-        const chUrl =
-            `http://${config.host}/stalker_portal/server/load.php?type=itv&action=get_all_channels&JsHttpRequest=1-xml`;
-        const r = await fetch(chUrl, { headers: getHeaders(token) });
-        const data = JSON.parse(await r.text());
+  // PLAYLIST
+  if (url.pathname.endsWith("playlist.m3u8")) {
+    const r = await fetch(
+      `http://${PORTAL.host}/stalker_portal/server/load.php?type=itv&action=get_all_channels&JsHttpRequest=1-xml`,
+      { headers: headers(token) }
+    );
+    const data = JSON.parse(await r.text());
+    const genres = await getGenres(token);
+    const gmap = {};
+    genres.forEach(g => (gmap[g.id] = g.title));
 
-        const genres = await getGenres(token);
-        const gmap = {};
-        genres.forEach(g => (gmap[g.id] = g.title));
+    const channels = (data.js?.data || []).map(ch => ({
+      id: ch.cmd.replace("ffrt http://localhost/ch/", ""),
+      name: ch.name,
+      epg: ch.xmltv_id || "",
+      group: gmap[ch.tv_genre_id] || "Other",
+      logo: ch.logo
+        ? `http://${PORTAL.host}/stalker_portal/misc/logos/320/${ch.logo}`
+        : ""
+    }));
 
-        const channels = (data.js?.data || []).map(i => ({
-            name: i.name,
-            cmd: i.cmd.replace("ffrt http://localhost/ch/", ""),
-            xmltv_id: i.xmltv_id,
-            logo: i.logo
-                ? `http://${config.host}/stalker_portal/misc/logos/320/${i.logo}`
-                : "",
-            group: gmap[i.tv_genre_id] || "Other"
-        }));
+    return new Response(await buildM3U(channels, req), {
+      headers: { "Content-Type": "application/vnd.apple.mpegurl" }
+    });
+  }
 
-        return new Response(await jsonToM3U(channels, profile, account, req), {
-            headers: { "Content-Type": "application/vnd.apple.mpegurl" }
-        });
-    }
+  // STREAM REDIRECT
+  if (last.endsWith(".m3u8")) {
+    const id = last.replace(".m3u8", "");
+    const stream = await getStream(id, token);
+    return Response.redirect(stream, 302);
+  }
 
-    // STREAM REDIRECT
-    if (last.endsWith(".m3u8")) {
-        const id = last.replace(".m3u8", "");
-        const stream = await getStreamURL(id, token);
-        return Response.redirect(stream, 302);
-    }
-
-    return new Response("Not Found", { status: 404 });
+  return new Response("NOT FOUND", { status: 404 });
 }
 
-// ================== VERCEL EDGE EXPORT ==================
+// ================== EXPORT ==================
 export default {
-    fetch: handleRequest
+  fetch: handle
 };
