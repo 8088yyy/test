@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/worker.js": {
-      "runtime": "edge"
-    }
-  }
-}
